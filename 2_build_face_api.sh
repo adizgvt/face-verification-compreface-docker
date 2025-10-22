@@ -65,7 +65,9 @@ fi
 # Function to validate URL format (up to port number)
 validate_url() {
     url=$1
-    echo "$url" | grep -Eq '^https\?://[a-zA-Z0-9.-]+(:[0-9]+)?$'
+    # Remove trailing slash if present for validation
+    url_no_slash="${url%/}"
+    echo "$url_no_slash" | grep -Eq '^https\?://([a-zA-Z0-9.-]+|([0-9]{1,3}\.){3}[0-9]{1,3})(:[0-9]+)?$'
     if [ $? -eq 0 ]; then
         return 0
     else
