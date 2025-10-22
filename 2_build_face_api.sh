@@ -96,9 +96,7 @@ if [ -z "$COMPRE_FACE_URL" ]; then
     echo ""
     print_warning "Please enter your CompreFace base URL:"
     print_status "Examples:"
-    print_status "  - http://localhost:8000"
-    print_status "  - http://YOUR_SERVER_IP:8000"
-    print_status "  - http://compreface:8000"
+    print_status "  - http://YOUR_SERVER_PUBLICIP:8000"
     read -p "CompreFace URL: " COMPRE_FACE_URL
     
     if [ -z "$COMPRE_FACE_URL" ]; then
@@ -115,20 +113,6 @@ if ! validate_url "$COMPRE_FACE_URL"; then
     exit 1
 fi
 
-# Step 3: Verify CompreFace is accessible
-print_status "Step 3: Verifying CompreFace is accessible..."
-VERIFICATION_URL="${COMPRE_FACE_URL}/api/v1/verification/verify"
-if curl -s -f "$VERIFICATION_URL" > /dev/null 2>&1; then
-    print_success "CompreFace is accessible at $COMPRE_FACE_URL"
-else
-    print_warning "Cannot reach CompreFace at $COMPRE_FACE_URL"
-    print_status "Make sure CompreFace is running and accessible"
-    print_status "You can check with: curl $VERIFICATION_URL"
-    read -p "Continue anyway? (y/N): " continue_anyway
-    if [[ ! $continue_anyway =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
 
 # Step 4: Clean up existing container and image
 print_status "Step 4: Cleaning up existing containers and images..."
@@ -186,40 +170,3 @@ fi
 # Step 8: Wait for service to be ready
 print_status "Step 8: Waiting for Face API to be ready..."
 sleep 10
-
-# Step 9: Test the API
-print_status "Step 9: Testing Face API..."
-if curl -s -f http://localhost:${PORT}/ > /dev/null 2>&1; then
-    print_success "Face API is running and accessible"
-    echo ""
-    print_success "🎉 Face API setup completed successfully!"
-    echo ""
-    echo "📋 Face API Information:"
-    echo "   URL: http://localhost:${PORT}"
-    echo "   Health Check: http://localhost:${PORT}/"
-    echo "   API Endpoint: http://localhost:${PORT}/compare-faces"
-    echo ""
-    echo "🔍 To check Face API logs:"
-    echo "   docker logs ${CONTAINER_NAME}"
-    echo "   docker logs -f ${CONTAINER_NAME}  # Follow logs"
-    echo ""
-    echo "🛑 To stop Face API:"
-    echo "   docker stop ${CONTAINER_NAME}"
-    echo "   docker rm ${CONTAINER_NAME}"
-    echo ""
-    echo "🔄 To restart Face API:"
-    echo "   docker restart ${CONTAINER_NAME}"
-    echo ""
-    echo "📖 Test the API:"
-    echo "   curl http://localhost:${PORT}/"
-    echo ""
-    echo "📝 Example API call:"
-    echo "   curl -X POST http://localhost:${PORT}/compare-faces \\"
-    echo "     -H 'Content-Type: application/json' \\"
-    echo "     -d '{\"image1\": \"base64_image_1\", \"image2\": \"base64_image_2\"}'"
-else
-    print_error "Face API is not responding"
-    print_status "Checking logs..."
-    docker logs ${CONTAINER_NAME}
-    exit 1
-fi
