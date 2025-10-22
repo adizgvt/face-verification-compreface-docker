@@ -99,6 +99,9 @@ else
 fi
 print_success "Docker service restarted"
 
+print_status "Step 5.2: Starting CompreFace services..."
+docker compose up -d
+
 # Step 6: Check CompreFace services status
 print_status "Step 6: Checking CompreFace services status..."
 if docker compose ps | grep -q "compreface-core.*Up"; then
@@ -113,7 +116,6 @@ else
     print_warning "CompreFace Core is not running"
     print_status "You may need to start CompreFace services manually:"
     print_status "  docker compose up -d"
-    docker compose up -d
     print_status "Checking all services status..."
 fi
 

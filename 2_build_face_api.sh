@@ -2,6 +2,7 @@
 
 # Face API Build Script
 # This script builds the Face API Docker image with CompreFace credentials
+# Requires: CompreFace API key and URL (both must be provided)
 
 set -e  # Exit on any error
 
@@ -43,6 +44,10 @@ echo "🚀 Starting Face API Build..."
 # - Running as root is acceptable for cloud GPU instances
 # - Docker commands work directly without sudo
 # - GPU access is typically pre-configured
+#
+# Requirements:
+# - CompreFace API key (from CompreFace UI -> Application Management)
+# - CompreFace base URL (e.g., http://localhost:8000)
 
 # Configuration
 CONTAINER_NAME="face-api"
@@ -74,10 +79,10 @@ if ! command -v curl &> /dev/null; then
     exit 1
 fi
 
-# Function to validate URL format
+# Function to validate URL format (up to port number)
 validate_url() {
     local url=$1
-    if [[ $url =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$ ]]; then
+    if [[ $url =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; then
         return 0
     else
         return 1
@@ -100,34 +105,39 @@ if [ -z "$COMPRE_FACE_API_KEY" ]; then
     fi
 fi
 
-# Get CompreFace URL
+# Get CompreFace URL (required)
 if [ -z "$COMPRE_FACE_URL" ]; then
     echo ""
-    print_warning "Please enter your CompreFace verification URL:"
-    print_status "Default: http://localhost:8000/api/v1/verification/verify"
-    print_status "Or use your server IP: http://YOUR_SERVER_IP:8000/api/v1/verification/verify"
-    read -p "CompreFace URL [default: http://localhost:8000/api/v1/verification/verify]: " COMPRE_FACE_URL
+    print_warning "Please enter your CompreFace base URL:"
+    print_status "Examples:"
+    print_status "  - http://localhost:8000"
+    print_status "  - http://YOUR_SERVER_IP:8000"
+    print_status "  - http://compreface:8000"
+    read -p "CompreFace URL: " COMPRE_FACE_URL
     
     if [ -z "$COMPRE_FACE_URL" ]; then
-        COMPRE_FACE_URL="http://localhost:8000/api/v1/verification/verify"
-    fi
-    
-    # Validate URL format
-    if ! validate_url "$COMPRE_FACE_URL"; then
-        print_error "Invalid URL format: $COMPRE_FACE_URL"
-        print_status "Please provide a valid URL (e.g., http://localhost:8000/api/v1/verification/verify)"
+        print_error "CompreFace URL is required!"
+        print_status "Please provide a valid CompreFace base URL"
         exit 1
     fi
 fi
 
+# Validate URL format
+if ! validate_url "$COMPRE_FACE_URL"; then
+    print_error "Invalid URL format: $COMPRE_FACE_URL"
+    print_status "Please provide a valid URL (e.g., http://localhost:8000)"
+    exit 1
+fi
+
 # Step 3: Verify CompreFace is accessible
 print_status "Step 3: Verifying CompreFace is accessible..."
-if curl -s -f "$COMPRE_FACE_URL" > /dev/null 2>&1; then
+VERIFICATION_URL="${COMPRE_FACE_URL}/api/v1/verification/verify"
+if curl -s -f "$VERIFICATION_URL" > /dev/null 2>&1; then
     print_success "CompreFace is accessible at $COMPRE_FACE_URL"
 else
     print_warning "Cannot reach CompreFace at $COMPRE_FACE_URL"
     print_status "Make sure CompreFace is running and accessible"
-    print_status "You can check with: curl $COMPRE_FACE_URL"
+    print_status "You can check with: curl $VERIFICATION_URL"
     read -p "Continue anyway? (y/N): " continue_anyway
     if [[ ! $continue_anyway =~ ^[Yy]$ ]]; then
         exit 1
@@ -151,7 +161,7 @@ fi
 print_status "Step 5: Building Face API Docker image..."
 docker build \
     --build-arg COMPRE_FACE_API_KEY="$COMPRE_FACE_API_KEY" \
-    --build-arg COMPRE_FACE_URL="$COMPRE_FACE_URL" \
+    --build-arg COMPRE_FACE_URL="$VERIFICATION_URL" \
     -t ${IMAGE_NAME} ./api
 
 if [ $? -eq 0 ]; then
@@ -166,7 +176,7 @@ print_status "Step 6: Creating environment file..."
 cat > .env << EOF
 # Face API Configuration
 COMPRE_FACE_API_KEY=$COMPRE_FACE_API_KEY
-COMPRE_FACE_URL=$COMPRE_FACE_URL
+COMPRE_FACE_URL=$VERIFICATION_URL
 EOF
 print_success "Environment file created"
 
@@ -177,7 +187,7 @@ docker run -d \
     --restart unless-stopped \
     -p ${PORT}:5000 \
     -e COMPRE_FACE_API_KEY="$COMPRE_FACE_API_KEY" \
-    -e COMPRE_FACE_URL="$COMPRE_FACE_URL" \
+    -e COMPRE_FACE_URL="$VERIFICATION_URL" \
     ${IMAGE_NAME}
 
 if [ $? -eq 0 ]; then
