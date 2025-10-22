@@ -67,7 +67,7 @@ validate_url() {
     url=$1
     # Remove trailing slash if present for validation
     url_no_slash="${url%/}"
-    echo "$url_no_slash" | grep -Eq '^https\?://([a-zA-Z0-9.-]+|([0-9]{1,3}\.){3}[0-9]{1,3})(:[0-9]+)?$'
+    echo "$url_no_slash" | grep -Eq '^https?://([a-zA-Z0-9.-]+|([0-9]{1,3}\.){3}[0-9]{1,3})(:[0-9]+)?$'
     if [ $? -eq 0 ]; then
         return 0
     else
