@@ -64,8 +64,9 @@ fi
 
 # Function to validate URL format (up to port number)
 validate_url() {
-    local url=$1
-    if [[ $url =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; then
+    url=$1
+    echo "$url" | grep -Eq '^https\?://[a-zA-Z0-9.-]+(:[0-9]+)?$'
+    if [ $? -eq 0 ]; then
         return 0
     else
         return 1
