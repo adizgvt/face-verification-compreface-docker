@@ -62,23 +62,6 @@ if [ ! -f "api/face_compare.py" ]; then
     exit 1
 fi
 
-# Check if Docker is installed and running
-if ! command -v docker &> /dev/null; then
-    print_error "Docker is not installed or not in PATH"
-    exit 1
-fi
-
-if ! docker info &> /dev/null; then
-    print_error "Docker is not running. Please start Docker service"
-    exit 1
-fi
-
-# Check if curl is available
-if ! command -v curl &> /dev/null; then
-    print_error "curl is not installed. Please install curl to test API connectivity"
-    exit 1
-fi
-
 # Function to validate URL format (up to port number)
 validate_url() {
     local url=$1
