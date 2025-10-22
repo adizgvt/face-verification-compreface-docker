@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CompreFace Setup Script
-# This script sets up and runs CompreFace with GPU support
+# This script sets up CompreFace configuration and verifies the setup
 
 set -e  # Exit on any error
 
@@ -12,6 +12,10 @@ echo "🚀 Starting CompreFace Setup..."
 # - Docker commands work directly without sudo
 # - GPU access is typically pre-configured
 # - nvidia-docker2 installation may be needed
+#
+# Prerequisites:
+# - CompreFace docker-compose.yml must exist in ./compreface/ directory
+# - .env file should already exist in ./compreface/ directory
 
 # Colors for output
 RED='\033[0;31m'
@@ -46,22 +50,33 @@ else
     print_status "Running as regular user"
 fi
 
-# Step 1: Clone CompreFace repository
-print_status "Step 1: Cloning CompreFace repository..."
-if [ ! -d "CompreFace" ]; then
-    git clone https://github.com/exadel-inc/CompreFace.git
-    print_success "CompreFace repository cloned successfully"
+# Step 1: Check for existing CompreFace setup
+print_status "Step 1: Checking for existing CompreFace setup..."
+if [ ! -f "compreface/docker-compose.yml" ]; then
+    print_error "CompreFace docker-compose.yml not found!"
+    print_status "Please ensure docker-compose.yml exists in ./compreface/ directory"
+    exit 1
 else
-    print_warning "CompreFace directory already exists, skipping clone"
+    print_success "CompreFace docker-compose.yml found"
 fi
 
-# Step 2: Navigate to GPU build directory
-print_status "Step 2: Navigating to GPU build directory..."
-cd CompreFace/custom-builds/SubCenter-ArcFace-r100-gpu
-print_success "Changed to CompreFace GPU build directory"
+# Step 2: Navigate to CompreFace directory
+print_status "Step 2: Navigating to CompreFace directory..."
+cd compreface
+print_success "Changed to CompreFace directory"
 
-# Step 3: Install nvidia-docker2
-print_status "Step 3: Installing nvidia-docker2..."
+# Step 3: Check for .env file
+print_status "Step 3: Checking for .env file..."
+if [ ! -f ".env" ]; then
+    print_error ".env file not found in compreface directory!"
+    print_status "Please ensure .env file exists in ./compreface/ directory"
+    exit 1
+else
+    print_success ".env file found"
+fi
+
+# Step 4: Install nvidia-docker2
+print_status "Step 4: Installing nvidia-docker2..."
 if ! dpkg -l | grep -q nvidia-docker2; then
     if [ "$EUID" -eq 0 ]; then
         apt update
@@ -75,8 +90,8 @@ else
     print_warning "nvidia-docker2 already installed"
 fi
 
-# Step 4: Restart Docker service
-print_status "Step 4: Restarting Docker service..."
+# Step 5: Restart Docker service
+print_status "Step 5: Restarting Docker service..."
 if [ "$EUID" -eq 0 ]; then
     systemctl restart docker
 else
@@ -84,56 +99,8 @@ else
 fi
 print_success "Docker service restarted"
 
-# Step 5: Setup environment file
-print_status "Step 5: Setting up environment configuration..."
-if [ ! -f ".env" ]; then
-    if [ -f ".env.example" ]; then
-        cp .env.example .env
-        print_success "Environment file created from example"
-    else
-        # Create basic .env file
-        cat > .env << EOF
-# Database settings
-postgres_username=postgres
-postgres_password=compreface_password_123
-postgres_db=compreface
-
-# CompreFace versions
-POSTGRES_VERSION=latest
-ADMIN_VERSION=latest
-API_VERSION=latest
-FE_VERSION=latest
-CORE_VERSION=latest
-
-# GPU settings
-uwsgi_processes=2
-uwsgi_threads=1
-max_detect_size=640
-
-# Other settings
-save_images_to_db=false
-max_file_size=5
-max_request_size=5
-connection_timeout=10000
-read_timeout=60000
-EOF
-        print_success "Basic environment file created"
-    fi
-else
-    print_warning "Environment file already exists"
-fi
-
-# Step 6: Start CompreFace services
-print_status "Step 6: Starting CompreFace services..."
-docker compose up -d
-print_success "CompreFace services started"
-
-# Step 7: Wait for services to be ready
-print_status "Step 7: Waiting for services to be ready..."
-sleep 30
-
-# Step 8: Check CompreFace Core (GPU service)
-print_status "Step 8: Checking CompreFace Core GPU service..."
+# Step 6: Check CompreFace services status
+print_status "Step 6: Checking CompreFace services status..."
 if docker compose ps | grep -q "compreface-core.*Up"; then
     print_success "CompreFace Core is running"
     
@@ -143,38 +110,15 @@ if docker compose ps | grep -q "compreface-core.*Up"; then
         print_warning "nvidia-smi failed inside container, but service is running"
     }
 else
-    print_error "CompreFace Core is not running properly"
-    print_status "Checking logs..."
-    docker compose logs compreface-core
-    exit 1
+    print_warning "CompreFace Core is not running"
+    print_status "You may need to start CompreFace services manually:"
+    print_status "  docker compose up -d"
+    print_status "Checking all services status..."
 fi
 
-# Step 9: Check all services status
-print_status "Step 9: Checking all services status..."
+# Step 7: Check all services status
+print_status "Step 7: Checking all services status..."
 docker compose ps
 
-# Step 10: Get CompreFace URL and instructions
+# Step 8: Get CompreFace URL and instructions
 print_success "🎉 CompreFace setup completed successfully!"
-echo ""
-echo "📋 Next steps:"
-echo "1. Open CompreFace UI in your browser:"
-echo "   http://$(hostname -I | awk '{print $1}'):8000"
-echo "   or http://localhost:8000"
-echo ""
-echo "2. Create an API key:"
-echo "   - Go to 'Application Management'"
-echo "   - Create a new application"
-echo "   - Copy the API key"
-echo ""
-echo "3. Note the CompreFace URL:"
-echo "   http://$(hostname -I | awk '{print $1}'):8000/api/v1/verification/verify"
-echo ""
-echo "4. Run the second script to build Face API:"
-echo "   cd /path/to/face_api"
-echo "   ./2_build_face_api.sh"
-echo ""
-echo "🔍 To check CompreFace logs:"
-echo "   docker compose logs -f"
-echo ""
-echo "🛑 To stop CompreFace:"
-echo "   docker compose down"
