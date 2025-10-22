@@ -113,6 +113,7 @@ else
     print_warning "CompreFace Core is not running"
     print_status "You may need to start CompreFace services manually:"
     print_status "  docker compose up -d"
+    docker compose up -d
     print_status "Checking all services status..."
 fi
 
